@@ -1,0 +1,944 @@
+{
+  "paragraphs": [
+    {
+      "text": "%md\n# SparkSQL Data Federation Demo\nDemonstrate how SparkSQL can act as a distributed data federation platform.\nTables are created from three different sources:\n- Data that being processed by Spark \n- Data in Hive \n- Data in Postgres\n\nSpark makes all of these tables available via JDBC as if from as single data store",
+      "dateUpdated": "Apr 27, 2016 1:26:09 PM",
+      "config": {
+        "colWidth": 12.0,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "enabled": true,
+        "editorMode": "ace/mode/scala",
+        "editorHide": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762842100_-2136423250",
+      "id": "20160427-131402_243849874",
+      "result": {
+        "code": "SUCCESS",
+        "type": "HTML",
+        "msg": "\u003ch1\u003eSparkSQL Data Federation Demo\u003c/h1\u003e\n\u003cp\u003eDemonstrate how SparkSQL can act as a distributed data federation platform.\n\u003cbr  /\u003eTables are created from three different sources:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003eData that being processed by Spark\u003c/li\u003e\n\u003cli\u003eData in Hive\u003c/li\u003e\n\u003cli\u003eData in Postgres\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003eSpark makes all of these tables available via JDBC as if from as single data store\u003c/p\u003e\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:14:02 PM",
+      "dateStarted": "Apr 27, 2016 1:20:55 PM",
+      "dateFinished": "Apr 27, 2016 1:20:55 PM",
+      "status": "FINISHED",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%md\nZeppelin must be able to sudo and access Postgres.\nRun the following commands as root at the host console:\n\n`echo \"zeppelin  ALL\u003d(ALL) NOPASSWD: ALL\" \u003e\u003e /etc/sudoers`\n`echo \"host all all 127.0.0.1/32 md5\" \u003e\u003e /var/lib/pgsql/data/pg_hba.conf`",
+      "dateUpdated": "Apr 27, 2016 1:33:54 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/markdown",
+        "editorHide": true,
+        "colWidth": 12.0,
+        "title": false
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696473_-252893494",
+      "id": "20160427-131136_1011702175",
+      "result": {
+        "code": "SUCCESS",
+        "type": "HTML",
+        "msg": "\u003cp\u003eZeppelin must be able to sudo and access Postgres.\n\u003cbr  /\u003eRun the following commands as root at the host console:\u003c/p\u003e\n\u003cp\u003e\u003ccode\u003eecho \"zeppelin  ALL\u003d(ALL) NOPASSWD: ALL\" \u0026gt;\u0026gt; /etc/sudoers\u003c/code\u003e\n\u003cbr  /\u003e\u003ccode\u003eecho \"host all all 127.0.0.1/32 md5\" \u0026gt;\u0026gt; /var/lib/pgsql/data/pg_hba.conf\u003c/code\u003e\u003c/p\u003e\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "dateStarted": "Apr 27, 2016 1:33:42 PM",
+      "dateFinished": "Apr 27, 2016 1:33:42 PM",
+      "status": "FINISHED",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Load Dependencies",
+      "text": "%dep\nz.load(\"com.databricks:spark-csv_2.10:1.4.0\")\nz.load(\"mysql:mysql-connector-java:5.1.38\")\nz.load(\"org.postgresql:postgresql:9.4-1201-jdbc41\")\n//z.load(\"/tmp/mysql-connector-java-5.1.38-bin.jar\")",
+      "dateUpdated": "Apr 27, 2016 1:26:51 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696472_-252508745",
+      "id": "20160427-131136_2057974851",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "res0: org.apache.zeppelin.dep.Dependency \u003d org.apache.zeppelin.dep.Dependency@2379461d\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Restart Ambari and Postgres",
+      "text": "%sh\n# on sandbox, use \u0027service ambari stop/start\u0027\n# on cluster, use \u0027service ambari-server stop/start\u0027\ncount\u003d$(chkconfig --list | grep ambari | wc -l)\nif [ $count -eq 3 ]\nthen\n    ambari_svc\u003d\"ambari\" \nelse\n    ambari_svc\u003d\"ambari-server\"\nfi\n\nsudo service $ambari_svc stop\nsudo service postgresql stop\nsudo service postgresql start\nsudo service $ambari_svc start",
+      "dateUpdated": "Apr 27, 2016 1:28:05 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696473_-252893494",
+      "id": "20160427-131136_2050421926",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "Stopping Ganglia\n/etc/init.d/ambari: line 30: /etc/init.d/hdp-gmetad: No such file or directory\n/etc/init.d/ambari: line 31: /etc/init.d/hdp-gmond: No such file or directory\n/etc/init.d/ambari: line 34: /etc/init.d/nagios: No such file or directory\nStopping Nagios\nStopping Ambari server\nUsing python  /usr/bin/python2\nStopping ambari-server\nAmbari Server stopped\nStopping Ambari agent\nVerifying Python version compatibility...\nUsing python  /usr/bin/python2\nFound ambari-agent PID: 23073\nStopping ambari-agent\nRemoving PID file at /var/run/ambari-agent/ambari-agent.pid\n\u001b[1mambari-agent successfully stopped\n\u001b[0;10mStopping postgresql service: [  OK  ]\r\nStarting postgresql service: [  OK  ]\r\nStarting Ambari...                                \nStarting Ambari server                                    [\u001b[32;01m  OK  \u001b[0m]\nStarting Ambari agent                                     [\u001b[32;01m  OK  \u001b[0m]\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Create DimStore Table in Postgres",
+      "text": "%sh\nexport PGPASSWORD\u003dzeppelin\n#Create Contoso database\nsudo -u postgres psql -c \"create database contoso;\"\nsudo -u postgres psql -c \"CREATE USER zeppelin WITH PASSWORD \u0027zeppelin\u0027;\"\nsudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE contoso to zeppelin;\"\nsudo -u postgres psql -c \"\\du\"\n\n#Run sql to create tables and import data from csv\npsql -U zeppelin -d contoso -h localhost -c \"\nCREATE TABLE DimStore (\nStoreKey int,\nGeographyKey int,\nStoreManager int,\nStoreType varchar,\nStoreName varchar,\nStoreDescription varchar,\nStatus varchar,\nOpenDate timestamp ,  \nCloseDate timestamp ,  \nEntityKey int,\nZipCode varchar,\nZipCodeExtension varchar,\nStorePhone varchar,\nStoreFax varchar,\nCloseReason varchar,\nEmployeeCount int,\nSellingAreaSize float,\nLastRemodelDate timestamp ,  \nETLLoadID int,\nSomeDate1 timestamp , \nSomeDate2 timestamp , \nLoadDate timestamp , \nUpdateDate timestamp \n );\"\n \npsql -U zeppelin -d contoso -h localhost -c \"\\copy DimStore FROM \u0027/tmp/data/DimStore.csv\u0027 DELIMITER \u0027,\u0027 CSV HEADER\" \npsql -U zeppelin -d contoso -h localhost -c \"select * from DimStore limit 5;\" \n\n#list tables\npsql -U zeppelin -d contoso -h localhost -c \"\\dt\"",
+      "dateUpdated": "Apr 27, 2016 1:28:28 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/sh",
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696474_-251739247",
+      "id": "20160427-131136_771226873",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "ERROR:  database \"contoso\" already exists\nERROR:  role \"zeppelin\" already exists\nGRANT\n            List of roles\n Role name | Attributes  | Member of \n-----------+-------------+-----------\n ambari    |             | {}\n mapred    |             | {}\n postgres  | Superuser   | {}\n           : Create role   \n           : Create DB     \n zeppelin  |             | {}\n\nERROR:  relation \"dimstore\" already exists\n storekey | geographykey | storemanager | storetype |         storename          |      storedescription      | status |      opendate       | closedate | entitykey | zipcode | zipcodeextension |  storephone  |   storefax   | closereason | employeecount | sellingareasize |   lastremodeldate   | etlloadid |      somedate1      |      somedate2      |      loaddate       |     updatedate      \n----------+--------------+--------------+-----------+----------------------------+----------------------------+--------+---------------------+-----------+-----------+---------+------------------+--------------+--------------+-------------+---------------+-----------------+---------------------+-----------+---------------------+---------------------+---------------------+---------------------\n        1 |          693 |           35 | Store     | Contoso Seattle No.1 Store | Contoso Seattle No.1 Store | On     | 2004-04-12 00:00:00 |           |       635 | 97001   | 97001            | 320-555-0195 | 320-555-0195 |             |            17 |             462 | 2009-06-16 00:00:00 |         1 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00\n        2 |          693 |           35 | Store     | Contoso Seattle No.2 Store | Contoso Seattle No.2 Store | On     | 2004-02-14 00:00:00 |           |       636 | 97001   | 97002            | 150-555-0189 | 150-555-0189 |             |            25 |             700 | 2009-06-17 00:00:00 |         1 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00 | 2009-06-05 00:00:00\n        3 |          856 |           36 | Store     | Contoso Kennewick Store    | Contoso Kennewick Store    | On     | 2004-02-12 00:00:00 |           |       934 | 97001   | 97003            | 212-555-0187 | 212-555-0187 |             |            26 |             680 | 2009-06-18 00:00:00 |         1 | 2008-11-21 00:00:00 | 2008-11-21 00:00:00 | 2008-11-21 00:00:00 | 2008-11-21 00:00:00\n        4 |          424 |           37 | Store     | Contoso Bellevue Store     | Contoso Bellevue Store     | On     | 2004-03-01 00:00:00 |           |       638 | 97001   | 97004            | 612-555-0100 | 612-555-0100 |             |            19 |             455 | 2009-06-16 00:00:00 |         1 | 2009-07-01 00:00:00 | 2009-07-01 00:00:00 | 2009-07-01 00:00:00 | 2009-07-01 00:00:00\n        5 |          677 |           38 | Store     | Contoso Redmond Store      | Contoso Redmond Store      | On     | 2004-04-02 00:00:00 |           |       639 | 97001   | 97005            | 612-555-0100 | 612-555-0100 |             |            33 |             560 | 2009-06-17 00:00:00 |         1 | 2009-06-13 00:00:00 | 2009-06-13 00:00:00 | 2009-06-13 00:00:00 | 2009-06-13 00:00:00\n(5 rows)\n\n          List of relations\n Schema |   Name   | Type  |  Owner   \n--------+----------+-------+----------\n public | dimstore | table | zeppelin\n(1 row)\n\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Download Data",
+      "text": "%sh\ncd /tmp\nwget -q https://www.dropbox.com/s/r70i8j1ujx4h7j8/data.zip\nunzip data.zip\nhead /tmp/data/FactSales.csv",
+      "dateUpdated": "Apr 27, 2016 1:29:06 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": false,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696474_-251739247",
+      "id": "20160427-131136_1946244866",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "Archive:  data.zip\n  inflating: data/DimAccount.csv     \n  inflating: data/DimChannel.csv     \n  inflating: data/DimCurrency.csv    \n  inflating: data/DimCustomer.csv    \n  inflating: data/DimDate.csv        \n  inflating: data/DimEmployee.csv    \n  inflating: data/DimEntity.csv      \n  inflating: data/DimGeography.csv   \n  inflating: data/DimMachine.csv     \n  inflating: data/DimOutage.csv      \n  inflating: data/DimProduct.csv     \n  inflating: data/DimProductCategory.csv  \n  inflating: data/DimProductSubcategory.csv  \n  inflating: data/DimPromotion.csv   \n  inflating: data/DimSalesTerritory.csv  \n  inflating: data/DimScenario.csv    \n  inflating: data/DimStore.csv       \n  inflating: data/FactExchangeRate.csv  \n  inflating: data/FactInventory.csv  \n  inflating: data/FactITMachine.csv  \n  inflating: data/FactITSLA.csv      \n  inflating: data/FactOnlineSales.csv  \n  inflating: data/FactSales.csv      \n  inflating: data/FactSalesQuota.csv  \n  inflating: data/FactStrategyPlan.csv  \nSalesKey,DateKey,channelKey,StoreKey,ProductKey,PromotionKey,CurrencyKey,UnitCost,UnitPrice,SalesQuantity,ReturnQuantity,ReturnAmount,DiscountQuantity,DiscountAmount,TotalCost,SalesAmount,ETLLoadID,LoadDate,UpdateDate\r\n1,2007-01-02 00:00:00,1,209,956,10,1,91.05,198,8,0,0,1,39.6,728.4,1544.4,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n2,2007-02-12 00:00:00,4,308,766,2,1,10.15,19.9,4,0,0,1,0.995,40.6,78.605,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n3,2008-01-24 00:00:00,1,156,1175,11,1,209.03,410,9,0,0,3,61.5,1881.27,3628.5,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n4,2008-01-13 00:00:00,2,306,1429,10,1,132.9,289,8,0,0,1,57.8,1063.2,2254.2,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n5,2008-01-22 00:00:00,2,306,1133,10,1,144.52,436.2,24,0,0,3,261.72,3468.48,10207.08,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n6,2007-07-02 00:00:00,3,200,2365,3,1,183.94,399.99,36,0,0,10,399.99,6621.84,13999.65,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n7,2007-11-19 00:00:00,4,310,1016,5,1,68.06,148,6,0,0,2,44.4,408.36,843.6,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n8,2008-04-10 00:00:00,2,307,138,15,1,229.93,499.99,9,0,0,1,99.998,2069.37,4399.912,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n9,2008-07-14 00:00:00,2,199,1731,12,1,33.32,72.45,24,0,0,5,36.225,799.68,1702.575,1,2010-01-01 00:00:00,2010-01-01 00:00:00\r\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Move Data to HDFS",
+      "text": "%sh\n#head -1000000 /tmp/data/FactInventory.csv \u003e /tmp/data/FactInventoryTemp.csv\n#head -1000000 /tmp/data/FactSales.csv \u003e /tmp/data/FactSalesTemp.csv\n#head -1000000 /tmp/data/FactOnlineSales.csv \u003e /tmp/data/FactOnlineSalesTemp.csv\n\nsudo -u hdfs hadoop fs -mkdir /tmp/DimCustomer\nsudo -u hdfs hadoop fs -mkdir /tmp/DimProduct\nsudo -u hdfs hadoop fs -mkdir /tmp/FactSales\nsudo -u hdfs hadoop fs -mkdir /tmp/FactOnlineSales\nsudo -u hdfs hadoop fs -put /tmp/data/DimCustomer.csv /tmp/DimCustomer/DimCustomer.csv\nsudo -u hdfs hadoop fs -put /tmp/data/DimProduct.csv /tmp/DimProduct/DimProduct.csv\nsudo -u hdfs hadoop fs -put /tmp/data/FactSales.csv /tmp/FactSales/FactSales.csv\nsudo -u hdfs hadoop fs -put /tmp/data/FactOnlineSales.csv /tmp/FactOnlineSales/FactOnlineSales.csv\nsudo -u hdfs hadoop fs -chown -R zeppelin:hdfs /tmp/DimCustomer/\nsudo -u hdfs hadoop fs -chown -R zeppelin:hdfs /tmp/DimProduct/\nsudo -u hdfs hadoop fs -chown -R zeppelin:hdfs /tmp/FactSales\nsudo -u hdfs hadoop fs -chown -R zeppelin:hdfs /tmp/FactOnlineSales",
+      "dateUpdated": "Apr 27, 2016 1:29:44 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/sh",
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696474_-251739247",
+      "id": "20160427-131136_66551758",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": ""
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Create Hive Tables",
+      "text": "",
+      "dateUpdated": "Apr 27, 2016 1:31:00 PM",
+      "config": {
+        "colWidth": 12.0,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "enabled": true,
+        "editorMode": "ace/mode/scala",
+        "title": true,
+        "editorHide": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461763799987_373059553",
+      "id": "20160427-132959_1493399110",
+      "dateCreated": "Apr 27, 2016 1:29:59 PM",
+      "status": "READY",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE EXTERNAL TABLE IF NOT EXISTS `FactSalesTemp`(\n`SalesKey` int,\n`DateKey` timestamp,  \n`channelKey` int,  \n`StoreKey` int,\n`ProductKey` int,\n`PromotionKey` int,\n`CurrencyKey` int,\n`UnitCost` float,\n`UnitPrice` float,\n`SalesQuantity` int, \n`ReturnQuantity` int,\n`ReturnAmount` float,\n`DiscountQuantity` int,\n`DiscountAmount` float,\n`TotalCost` float,\n`SalesAmount` float,\n`ETLLoadID` int,\n`LoadDate` timestamp , \n`UpdateDate` timestamp)\nROW FORMAT\nDELIMITED FIELDS TERMINATED BY \u0027,\u0027\nLOCATION \u0027/tmp/FactSales/\u0027\ntblproperties (\"skip.header.line.count\"\u003d\"1\")",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696474_-251739247",
+      "id": "20160427-131136_1843900266",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE EXTERNAL TABLE IF NOT EXISTS `FactOnlineSalesTemp`(\n`OnlineSalesKey` int,\n`DateKey` timestamp,\n`StoreKey` int,  \n`ProductKey` int,\n`PromotionKey` int,\n`CurrencyKey` int,\n`CustomerKey` int,\n`SalesOrderNumber` string,\n`SalesOrderLineNumber` int,\n`SalesQuantity` int , \n`SalesAmount` float,\n`ReturnQuantity` int,\n`ReturnAmount` float,\n`DiscountQuantity` int,\n`DiscountAmount` float,\n`TotalCost` float,\n`UnitCost` float,\n`UnitPrice` float,\n`ETLLoadID` int,\n`LoadDate` timestamp, \n`UpdateDate` timestamp) \nROW FORMAT\nDELIMITED FIELDS TERMINATED BY \u0027,\u0027 \nLOCATION \u0027/tmp/FactOnlineSales/\u0027 \ntblproperties (\"skip.header.line.count\"\u003d\"1\")\n",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696475_-252123996",
+      "id": "20160427-131136_95260805",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `FactSales`(\n`SalesKey` int ,\n`DateKey` timestamp ,  \n`channelKey` int ,  \n`StoreKey` int,\n`ProductKey` int,\n`PromotionKey` int,\n`CurrencyKey` int,\n`UnitCost` float,\n`UnitPrice` float,\n`SalesQuantity` int , \n`ReturnQuantity` int,\n`ReturnAmount` float,\n`DiscountQuantity` int,\n`DiscountAmount` float,\n`TotalCost` float,\n`SalesAmount` float,\n`ETLLoadID` int,\n`LoadDate` timestamp , \n`UpdateDate` timestamp) \nSTORED AS ORC",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696475_-252123996",
+      "id": "20160427-131136_1173032620",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `FactOnlineSales`(\n`OnlineSalesKey` int,\n`DateKey` timestamp,\n`StoreKey` int,  \n`ProductKey` int,\n`PromotionKey` int,\n`CurrencyKey` int,\n`CustomerKey` int,\n`SalesOrderNumber` string,\n`SalesOrderLineNumber` int,\n`SalesQuantity` int , \n`SalesAmount` float,\n`ReturnQuantity` int,\n`ReturnAmount` float,\n`DiscountQuantity` int,\n`DiscountAmount` float,\n`TotalCost` float,\n`UnitCost` float,\n`UnitPrice` float,\n`ETLLoadID` int,\n`LoadDate` timestamp, \n`UpdateDate` timestamp) \nSTORED AS ORC",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696475_-252123996",
+      "id": "20160427-131136_1259364880",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `DimCustomerTemp`(\n`CustomerKey` int,\n`GeographyKey` int,\n`CustomerLabel` int,\n`Title` string,\n`FirstName` string,\n`MiddleName` string,\n`LastName` string,\n`NameStyle` string,\n`BirthDate` timestamp,\n`MaritalStatus` string,\n`Suffix` string,\n`Gender` string,\n`EmailAddress` string,\n`YearlyIncome` int,\n`TotalChildren` int,\n`NumberChildrenAtHome` int,\n`Education` string,\n`Occupation` string,\n`HouseOwnerFlag` int,\n`NumberCarsOwned` int,\n`AddressLine1` string,\n`AddressLine2` string,\n`Phone` string,\n`DateFirstPurchase` timestamp,\n`CustomerType` string,\n`CompanyName` string,\n`ETLLoadID` int,\n`LoadDate` timestamp,\n`UpdateDate` timestamp)\nROW FORMAT\nDELIMITED FIELDS TERMINATED BY \u0027,\u0027 \nLOCATION \u0027/tmp/DimCustomer/\u0027 \ntblproperties (\"skip.header.line.count\"\u003d\"1\")",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696475_-252123996",
+      "id": "20160427-131136_546713328",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `DimCustomer`(\n`CustomerKey` int,\n`GeographyKey` int,\n`CustomerLabel` int,\n`Title` string,\n`FirstName` string,\n`MiddleName` string,\n`LastName` string,\n`NameStyle` string,\n`BirthDate` timestamp,\n`MaritalStatus` string,\n`Suffix` string,\n`Gender` string,\n`EmailAddress` string,\n`YearlyIncome` int,\n`TotalChildren` int,\n`NumberChildrenAtHome` int,\n`Education` string,\n`Occupation` string,\n`HouseOwnerFlag` int,\n`NumberCarsOwned` int,\n`AddressLine1` string,\n`AddressLine2` string,\n`Phone` string,\n`DateFirstPurchase` timestamp,\n`CustomerType` string,\n`CompanyName` string,\n`ETLLoadID` int,\n`LoadDate` timestamp,\n`UpdateDate` timestamp)\nSTORED AS ORC",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696476_-254047740",
+      "id": "20160427-131136_1675861830",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `DimProductTemp`(\n`ProductKey` int,\n`ProductLabel` string,\n`ProductName` string,\n`ProductDescription` string,\n`ProductSubcategoryKey` int,\n`Manufacturer` string,\n`BrandName` string,\n`ClassID` int,\n`ClassName`string,\n`StyleID` int,\n`StyleName` string,\n`ColorID` int,\n`ColorName` string,\n`Size` string,\n`SizeRange` string,\n`SizeUnitMeasureID` int,\n`Weight` float,\n`WeightUnitMeasureID` int,\n`UnitOfMeasureID` int,\n`UnitOfMeasureName` string,\n`StockTypeID` int,\n`StockTypeName` string,\n`UnitCost` int,\n`UnitPrice` float,\n`AvailableForSaleDate` timestamp,\n`StopSaleDate` timestamp,\n`Status` string,\n`ImageURL` string,\n`ProductURL` string,\n`ETLLoadID` int,\n`LoadDate` timestamp,\n`UpdateDate` timestamp)\nROW FORMAT\nDELIMITED FIELDS TERMINATED BY \u0027,\u0027 \nLOCATION \u0027/tmp/DimProduct/\u0027 \ntblproperties (\"skip.header.line.count\"\u003d\"1\")",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696476_-254047740",
+      "id": "20160427-131136_1961746405",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nCREATE TABLE IF NOT EXISTS `DimProduct`(\n`ProductKey` int,\n`ProductLabel` string,\n`ProductName` string,\n`ProductDescription` string,\n`ProductSubcategoryKey` int,\n`Manufacturer` string,\n`BrandName` string,\n`ClassID` int,\n`ClassName`string,\n`StyleID` int,\n`StyleName` string,\n`ColorID` int,\n`ColorName` string,\n`Size` string,\n`SizeRange` string,\n`SizeUnitMeasureID` int,\n`Weight` float,\n`WeightUnitMeasureID` int,\n`UnitOfMeasureID` int,\n`UnitOfMeasureName` string,\n`StockTypeID` int,\n`StockTypeName` string,\n`UnitCost` int,\n`UnitPrice` float,\n`AvailableForSaleDate` timestamp,\n`StopSaleDate` timestamp,\n`Status` string,\n`ImageURL` string,\n`ProductURL` string,\n`ETLLoadID` int,\n`LoadDate` timestamp,\n`UpdateDate` timestamp)\nSTORED AS ORC",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696477_-254432489",
+      "id": "20160427-131136_755396444",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nINSERT INTO FactSales SELECT * from FactSalesTemp",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696477_-254432489",
+      "id": "20160427-131136_24713244",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nINSERT INTO FactOnlineSales SELECT * from FactOnlineSalesTemp",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorHide": false,
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696477_-254432489",
+      "id": "20160427-131136_891148037",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nINSERT INTO DimCustomer SELECT * from DimCustomerTemp",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696477_-254432489",
+      "id": "20160427-131136_974103681",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%hive\nINSERT INTO DimProduct SELECT * from DimProductTemp",
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {
+        "enabled": true,
+        "tableHide": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [
+            {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          ],
+          "values": [],
+          "groups": [],
+          "scatter": {
+            "xAxis": {
+              "name": "Update Count",
+              "index": 0.0,
+              "aggr": "sum"
+            }
+          }
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696478_-253278242",
+      "id": "20160427-131136_1492725486",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TABLE",
+        "msg": "Update Count\n-1\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Federate and Expose Data with SparkSQL",
+      "text": "import org.apache.spark.sql._\nimport org.apache.spark.sql.hive.thriftserver._\nimport org.apache.spark.sql.hive.HiveContext\nimport org.apache.spark.sql.types.{StructType,StructField,StringType,IntegerType,LongType,FloatType,TimestampType};\n\nval hiveContext \u003d new HiveContext(sc)\n\nval productDF \u003d hiveContext.read.format(\"com.databricks.spark.csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"/tmp/DimProduct/DimProduct.csv\")\nproductDF.registerTempTable(\"DimProductDF\")\nproductDF.show()\n\n/*\nval hiveTablesDF \u003d hiveContext.read.format(\"jdbc\").options(Map(\"driver\" -\u003e \"com.mysql.jdbc.Driver\",\"url\" -\u003e \"jdbc:mysql://sandbox.hortonworks.com/hive?user\u003dhive\u0026password\u003dhive\",\"dbtable\" -\u003e \"TBLS\")).load()\nhiveTablesDF.registerTempTable(\"tables\")\nhiveTablesDF.show()\n*/\n\nval hiveTablesDF \u003d hiveContext.read.format(\"jdbc\").options(Map(\"driver\" -\u003e \"org.postgresql.Driver\",\"url\" -\u003e \"jdbc:postgresql://localhost/contoso?user\u003dzeppelin\u0026password\u003dzeppelin\",\"dbtable\" -\u003e \"dimstore\")).load()\nhiveTablesDF.registerTempTable(\"DimStoreDF\")\nhiveTablesDF.show()\n\n//hiveContext.setConf(\"spark.sql.hive.thriftServer.singleSession\",\"true\")\nhiveContext.setConf(\"spark.sql.autoBroadcastJoinThreshold\",\"100000000\")\nhiveContext.setConf(\"hive.server2.thrift.port\",\"10002\");\nHiveThriftServer2.startWithContext(hiveContext)",
+      "dateUpdated": "Apr 27, 2016 1:31:48 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696478_-253278242",
+      "id": "20160427-131136_1333278948",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "import org.apache.spark.sql._\nimport org.apache.spark.sql.hive.thriftserver._\nimport org.apache.spark.sql.hive.HiveContext\nimport org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, LongType, FloatType, TimestampType}\nhiveContext: org.apache.spark.sql.hive.HiveContext \u003d org.apache.spark.sql.hive.HiveContext@386ff3c2\nschema: org.apache.spark.sql.types.StructType \u003d StructType(StructField(name,StringType,true), StructField(age,IntegerType,true), StructField(tableKey,IntegerType,true), StructField(salesKey,IntegerType,true))\ndata: Array[String] \u003d Array(Michael, 29, 1, 2, Andy, 30, 6, 8, Justin, 19, 12, 16)\npersonRDD: org.apache.spark.rdd.RDD[String] \u003d ParallelCollectionRDD[7] at parallelize at \u003cconsole\u003e:47\npersonRows: org.apache.spark.rdd.RDD[org.apache.spark.sql.Row] \u003d MapPartitionsRDD[9] at map at \u003cconsole\u003e:49\npeopleDF: org.apache.spark.sql.DataFrame \u003d [name: string, age: int, tableKey: int, salesKey: int]\n+-------+---+--------+--------+\n|   name|age|tableKey|salesKey|\n+-------+---+--------+--------+\n|Michael| 29|       1|       2|\n|   Andy| 30|       6|       8|\n| Justin| 19|      12|      16|\n+-------+---+--------+--------+\n\nproductDF: org.apache.spark.sql.DataFrame \u003d [ProductKey: int, ProductLabel: int, ProductName: string, ProductDescription: string, ProductSubcategoryKey: string, Manufacturer: string, BrandName: string, ClassID: string, ClassName: string, StyleID: string, StyleName: string, ColorID: string, ColorName: string, Size: string, SizeRange: string, SizeUnitMeasureID: string, Weight: string, WeightUnitMeasureID: string, UnitOfMeasureID: string, UnitOfMeasureName: string, StockTypeID: string, StockTypeName: string, UnitCost: string, UnitPrice: string, AvailableForSaleDate: string, StopSaleDate: string, Status: string, ImageURL: string, ProductURL: string, ETLLoadID: string, LoadDate: string, UpdateDate: string]\n+----------+------------+--------------------+--------------------+---------------------+------------------+--------------+----------------+-------------+-------+---------+---------------+---------+--------------+----------------+-----------------+----------------+-------------------+---------------+------------------+------------------+------------------+---------------+---------+--------------------+-------------------+------+-------------------+-------------------+-------------------+--------+-------------------+\n|ProductKey|ProductLabel|         ProductName|  ProductDescription|ProductSubcategoryKey|      Manufacturer|     BrandName|         ClassID|    ClassName|StyleID|StyleName|        ColorID|ColorName|          Size|       SizeRange|SizeUnitMeasureID|          Weight|WeightUnitMeasureID|UnitOfMeasureID| UnitOfMeasureName|       StockTypeID|     StockTypeName|       UnitCost|UnitPrice|AvailableForSaleDate|       StopSaleDate|Status|           ImageURL|         ProductURL|          ETLLoadID|LoadDate|         UpdateDate|\n+----------+------------+--------------------+--------------------+---------------------+------------------+--------------+----------------+-------------+-------+---------+---------------+---------+--------------+----------------+-----------------+----------------+-------------------+---------------+------------------+------------------+------------------+---------------+---------+--------------------+-------------------+------+-------------------+-------------------+-------------------+--------+-------------------+\n|         1|      101001|Contoso 512MB MP3...|512MB USB driver ...|                    1|           Contoso|           Ltd|         Contoso|            1|Economy|        1| Product0101001|        7|        Silver|  2.2 x 1.8 x 4 |                 |                | 4.7999999999999998|         ounces|                 1|            inches|                 1|           High|     6.62|               12.99|2005-05-03 00:00:00|      |                 On|                   |                   |       1|2008-05-25 08:01:12|\n|         2|      101002|Contoso 512MB MP3...|512MB USB driver ...|                    1|           Contoso|           Ltd|         Contoso|            1|Economy|        5| Product0101002|        3|          Blue|  2.2 x 1.8 x 4 |                 |                | 4.0999999999999996|         ounces|                 1|            inches|                 1|           High|     6.62|               12.99|2005-05-03 00:00:00|      |                 On|                   |                   |       1|2008-05-26 08:01:12|\n|         3|      101003|Contoso 1G MP3 Pl...|1GB flash memory ...|                    1|           Contoso|           Ltd|         Contoso|            1|Economy|        1| Product0101003|        8|         White|2.2  x 2.2  x 4 |                 |                |                4.5|         ounces|                 1|            inches|                 2|            Mid|      7.4|               14.52|2006-05-13 00:00:00|      |                 On|                   |                   |       1|2008-05-27 08:01:12|\n|         4|      101004|Contoso 2G MP3 Pl...|    2GB flash memory|          LCD display| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101004|               7|           Silver|2.2  x 2.2  x 4 |                   |               |               4.5|            ounces|                 1|         inches|        2|                 Mid|                 11| 21.57|2006-12-16 00:00:00|                   |                 On|        |                   |\n|         5|      101005|Contoso 2G MP3 Pl...|    2GB flash memory|          LCD display| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101005|               6|              Red| 3.7 x 0.6 x 2.2|                   |               |2.3999999999999999|            ounces|                 1|         inches|        2|                 Mid|                 11| 21.57|2006-12-17 00:00:00|                   |                 On|        |                   |\n|         6|      101006|Contoso 2G MP3 Pl...|    2GB flash memory|          LCD display| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        2|Product0101006|               2|            Black| 1.6 x 0.4 x 3.7|                   |               |8.8000000000000007|            ounces|                 1|         inches|        2|                 Mid|                 11| 21.57|2006-12-18 00:00:00|                   |                 On|        |                   |\n|         7|      101007|Contoso 2G MP3 Pl...|    2GB flash memory|          LCD display| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101007|               3|             Blue|2.2 x 1.5 x 0.6 |                   |               |2.1000000000000001|            ounces|                 1|         inches|        2|                 Mid|                 11| 21.57|2006-12-19 00:00:00|                   |                 On|        |                   |\n|         8|      101008|Contoso 4G MP3 Pl...|4GB flash memory ...|  LCD Display with...| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        2|Product0101008|               7|           Silver| 0.8 x 3.6 x 1.1|                   |               |5.5999999999999996|            ounces|                 1|         inches|        2|                 Mid|              30.58| 59.99|2007-04-16 00:00:00|                   |                 On|        |                   |\n|         9|      101009|Contoso 4G MP3 Pl...|4GB flash memory ...|  LCD Display with...| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101009|               2|            Black| 3.1 x 1.9 x 0.3|                   |               |2.1000000000000001|            ounces|                 1|         inches|        2|                 Mid|              30.58| 59.99|2007-04-16 00:00:00|                   |                 On|        |                   |\n|        10|      101010|Contoso 4G MP3 Pl...|4GB flash memory ...|  LCD Display with...| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101010|              14|            Green|   2.3 x 0.3 x 4|                   |               |                11|            ounces|                 1|         inches|        2|                 Mid|              30.58| 59.99|2007-04-16 00:00:00|                   |                 On|        |                   |\n|        11|      101011|Contoso 4G MP3 Pl...|4GB flash memory ...|  LCD Display with...| plays MP3 and WMA|             1|         Contoso|          Ltd|Contoso|        1|        Economy|        1|Product0101011|               9|           Orange| 2.2 x 0.6 x 1.4|                   |               |              14.1|            ounces|                 1|         inches|        2|                 Mid|              30.58| 59.99|2007-04-16 00:00:00|                   |                 On|        |                   |\n|        12|      101012|Contoso 4GB Flash...|     1.8\u0027\u0027 color LCD|             play MP3| WMA and Video MTV| and share JPG|               1|      Contoso|    Ltd|  Contoso|              1|  Economy|             3|  Product0101012|                3|            Blue|    0.8 x 3.6 x 1.1|               |                  |7.4000000000000004|            ounces|              1|   inches|                   2|                Mid| 35.72|              77.68|2007-06-16 00:00:00|                   |      On|                   |\n|        13|      101013|Contoso 4GB Flash...|     1.8\u0027\u0027 color LCD|             play MP3| WMA and Video MTV| and share JPG|               1|      Contoso|    Ltd|  Contoso|              1|  Economy|             4|  Product0101013|                2|           Black|    1.7 x 3.5 x 0.5|               |                  |2.6000000000000001|            ounces|              1|   inches|                   2|                Mid| 35.72|              77.68|2007-06-16 00:00:00|                   |      On|                   |\n|        14|      101014|Contoso 4GB Flash...|     1.8\u0027\u0027 color LCD|             play MP3| WMA and Video MTV| and share JPG|               1|      Contoso|    Ltd|  Contoso|              1|  Economy|             1|  Product0101014|                7|          Silver|    0.4 x 1.6 x 3.6|               |                  |                 8|            ounces|              1|   inches|                   2|                Mid| 35.72|              77.68|2007-06-16 00:00:00|                   |      On|                   |\n|        15|      101015|Contoso 4GB Flash...|     1.8\u0027\u0027 color LCD|             play MP3| WMA and Video MTV| and share JPG|               1|      Contoso|    Ltd|  Contoso|              1|  Economy|             4|  Product0101015|                8|           White|  3.26 x 2.16 x .44|               |                  |2.1000000000000001|            ounces|              1|   inches|                   2|                Mid| 35.72|              77.68|2007-06-16 00:00:00|                   |      On|                   |\n|        16|      101016|Contoso 8GB Super...|        2\" color LCD|             Touchpad|       Plays music|         video| photos and text|            1|Contoso|      Ltd|        Contoso|        2|       Regular|               3|   Product0101016|               8|              White|3.8 x 0.6 x 2.2|                  |                  |                11|         ounces|        1|              inches|                  2|   Mid|              50.56|             109.95|2008-01-16 00:00:00|        |                 On|\n|        17|      101017|Contoso 8GB Super...|        2\" color LCD|             Touchpad|       Plays music|         video| photos and text|            1|Contoso|      Ltd|        Contoso|        2|       Regular|               1|   Product0101017|               6|                Red|3.8 x 0.6 x 2.2|                  |                  |                11|         ounces|        1|              inches|                  2|   Mid|              50.56|             109.95|2008-01-16 00:00:00|        |                 On|\n|        18|      101018|Contoso 8GB Super...|        2\" color LCD|             Touchpad|       Plays music|         video| photos and text|            1|Contoso|      Ltd|        Contoso|        2|       Regular|               3|   Product0101018|              14|              Green|3.1 x 1.9 x 0.3|                  |                  |2.1000000000000001|         ounces|        1|              inches|                  2|   Mid|              50.56|             109.95|2008-01-16 00:00:00|        |                 On|\n|        19|      101019|Contoso 8GB Super...|        2\" color LCD|             Touchpad|       Plays music|         video| photos and text|            1|Contoso|      Ltd|        Contoso|        2|       Regular|               1|   Product0101019|              10|               Pink|    1.4 x 5 x 7|                  |                  |5.9000000000000004|         ounces|        1|              inches|                  2|   Mid|              50.56|             109.95|2008-01-16 00:00:00|        |                 On|\n|        20|      101020|Contoso 8GB MP3 P...|2\u0027\u0027 LCD with blue...|        320x240-pixel|       plays music|         video| photos and text| display JPEG|    BMP|      GIF| TIFF and PNG  |        1|       Contoso|             Ltd|          Contoso|               2|            Regular|              4|    Product0101020|                 2|             Black|5.5 x 1.7 x 5.3|         |                    |                  1|pounds|                  1|             inches|                  2|     Mid|              61.62|\n+----------+------------+--------------------+--------------------+---------------------+------------------+--------------+----------------+-------------+-------+---------+---------------+---------+--------------+----------------+-----------------+----------------+-------------------+---------------+------------------+------------------+------------------+---------------+---------+--------------------+-------------------+------+-------------------+-------------------+-------------------+--------+-------------------+\nonly showing top 20 rows\n\nhiveTablesDF: org.apache.spark.sql.DataFrame \u003d [storekey: int, geographykey: int, storemanager: int, storetype: string, storename: string, storedescription: string, status: string, opendate: timestamp, closedate: timestamp, entitykey: int, zipcode: string, zipcodeextension: string, storephone: string, storefax: string, closereason: string, employeecount: int, sellingareasize: double, lastremodeldate: timestamp, etlloadid: int, somedate1: timestamp, somedate2: timestamp, loaddate: timestamp, updatedate: timestamp]\n+--------+------------+------------+---------+--------------------+--------------------+------+--------------------+--------------------+---------+-------+----------------+------------+------------+-----------+-------------+---------------+--------------------+---------+--------------------+--------------------+--------------------+--------------------+\n|storekey|geographykey|storemanager|storetype|           storename|    storedescription|status|            opendate|           closedate|entitykey|zipcode|zipcodeextension|  storephone|    storefax|closereason|employeecount|sellingareasize|     lastremodeldate|etlloadid|           somedate1|           somedate2|            loaddate|          updatedate|\n+--------+------------+------------+---------+--------------------+--------------------+------+--------------------+--------------------+---------+-------+----------------+------------+------------+-----------+-------------+---------------+--------------------+---------+--------------------+--------------------+--------------------+--------------------+\n|       1|         693|          35|    Store|Contoso Seattle N...|Contoso Seattle N...|    On|2004-04-12 00:00:...|                null|      635|  97001|           97001|320-555-0195|320-555-0195|       null|           17|          462.0|2009-06-16 00:00:...|        1|2009-06-05 00:00:...|2009-06-05 00:00:...|2009-06-05 00:00:...|2009-06-05 00:00:...|\n|       2|         693|          35|    Store|Contoso Seattle N...|Contoso Seattle N...|    On|2004-02-14 00:00:...|                null|      636|  97001|           97002|150-555-0189|150-555-0189|       null|           25|          700.0|2009-06-17 00:00:...|        1|2009-06-05 00:00:...|2009-06-05 00:00:...|2009-06-05 00:00:...|2009-06-05 00:00:...|\n|       3|         856|          36|    Store|Contoso Kennewick...|Contoso Kennewick...|    On|2004-02-12 00:00:...|                null|      934|  97001|           97003|212-555-0187|212-555-0187|       null|           26|          680.0|2009-06-18 00:00:...|        1|2008-11-21 00:00:...|2008-11-21 00:00:...|2008-11-21 00:00:...|2008-11-21 00:00:...|\n|       4|         424|          37|    Store|Contoso Bellevue ...|Contoso Bellevue ...|    On|2004-03-01 00:00:...|                null|      638|  97001|           97004|612-555-0100|612-555-0100|       null|           19|          455.0|2009-06-16 00:00:...|        1|2009-07-01 00:00:...|2009-07-01 00:00:...|2009-07-01 00:00:...|2009-07-01 00:00:...|\n|       5|         677|          38|    Store|Contoso Redmond S...|Contoso Redmond S...|    On|2004-04-02 00:00:...|                null|      639|  97001|           97005|612-555-0100|612-555-0100|       null|           33|          560.0|2009-06-17 00:00:...|        1|2009-06-13 00:00:...|2009-06-13 00:00:...|2009-06-13 00:00:...|2009-06-13 00:00:...|\n|       6|         575|          39|    Store|Contoso Yakima Store|Contoso Yakima Store|    On|2005-05-15 00:00:...|                null|      640|  97001|           97006|168-555-0183|168-555-0183|       null|           47|         1125.0|2009-06-16 00:00:...|        1|2009-07-01 00:00:...|2009-07-01 00:00:...|2009-07-01 00:00:...|2009-07-01 00:00:...|\n|       7|         838|          40|    Store|Contoso Granger S...|Contoso Granger S...|    On|2004-06-16 00:00:...|                null|      641|  97001|           97007|913-555-0172|913-555-0172|       null|           22|          500.0|2009-06-17 00:00:...|        1|2009-02-11 00:00:...|2009-01-03 00:00:...|2009-02-11 00:00:...|2009-01-03 00:00:...|\n|       8|         935|          41|    Store|Contoso Sunnyside...|Contoso Sunnyside...|    On|2004-07-02 00:00:...|                null|      642|  97001|           97008|913-555-0172|913-555-0172|       null|           17|          460.0|2009-06-18 00:00:...|        1|2009-02-11 00:00:...|2009-06-13 00:00:...|2009-02-11 00:00:...|2009-06-13 00:00:...|\n|       9|         941|          42|    Store|Contoso Toppenish...|Contoso Toppenish...|    On|2004-08-18 00:00:...|                null|      643|  97001|           97009|903-555-0145|903-555-0145|       null|           25|          700.0|2009-06-16 00:00:...|        1|2009-02-11 00:00:...|2009-06-25 00:00:...|2009-02-11 00:00:...|2009-06-25 00:00:...|\n|      10|         947|          43|    Store|Contoso Wapato Store|Contoso Wapato Store|    On|2004-09-19 00:00:...|                null|      644|  97001|           97010|145-555-0130|145-555-0130|       null|           25|          700.0|2009-06-17 00:00:...|        1|2009-02-11 00:00:...|2009-06-05 00:00:...|2009-02-11 00:00:...|2009-06-05 00:00:...|\n|      11|         813|          44|    Store|Contoso Cle Elum ...|Contoso Cle Elum ...|    On|2004-10-20 00:00:...|                null|      645|  97001|           97011|849-555-0139|849-555-0139|       null|           26|          680.0|2009-06-16 00:00:...|        1|2009-02-11 00:00:...|2009-07-01 00:00:...|2009-02-11 00:00:...|2009-07-01 00:00:...|\n|      12|         893|          45|    Store|Contoso North Ben...|Contoso North Ben...|   Off|2004-11-21 00:00:...|2009-04-12 00:00:...|      646|  97001|           97012|206-555-0180|206-555-0180| Relocation|           19|          455.0|2009-06-17 00:00:...|        1|2009-05-25 00:00:...|2009-05-25 00:00:...|2009-05-25 00:00:...|2009-05-25 00:00:...|\n|      13|         930|          46|    Store|Contoso Snoqualmi...|Contoso Snoqualmi...|    On|2004-12-22 00:00:...|                null|      647|  97001|           97013|122-555-0189|122-555-0189|       null|           33|          560.0|2009-06-18 00:00:...|        1|2009-05-25 00:00:...|2009-05-25 00:00:...|2009-05-25 00:00:...|2009-05-25 00:00:...|\n|      14|         825|          47|    Store|Contoso Fall City...|Contoso Fall City...|    On|2006-01-23 00:00:...|                null|      648|  97001|           97014|819-555-0175|819-555-0175|       null|           47|         1125.0|2009-06-16 00:00:...|        1|2009-07-10 00:00:...|2009-06-16 00:00:...|2009-07-10 00:00:...|2009-06-16 00:00:...|\n|      15|         678|          48|    Store|Contoso Renton Store|Contoso Renton Store|    On|2004-02-24 00:00:...|                null|      649|  97001|           97015|424-555-0189|424-555-0189|       null|           22|          500.0|2009-06-17 00:00:...|        1|2009-07-10 00:00:...|2009-06-17 00:00:...|2009-07-10 00:00:...|2009-06-17 00:00:...|\n|      16|         627|          49|    Store|Contoso Everett S...|Contoso Everett S...|    On|2004-01-25 00:00:...|                null|      650|  97001|           97016|508-555-0165|508-555-0165|       null|           17|          462.0|2009-06-16 00:00:...|        1|2009-07-10 00:00:...|2009-06-16 00:00:...|2009-07-10 00:00:...|2009-06-16 00:00:...|\n|      17|         551|         135|    Store|Contoso Spokane S...|Contoso Spokane S...|    On|2004-03-26 00:00:...|                null|      651|  97001|           97017|984-555-0185|984-555-0185|       null|           25|          700.0|2009-06-17 00:00:...|        1|2009-07-10 00:00:...|2009-06-17 00:00:...|2009-07-10 00:00:...|2009-06-17 00:00:...|\n|      18|         944|          50|    Store|Contoso Veradale ...|Contoso Veradale ...|    On|2004-07-27 00:00:...|                null|      652|  97001|           97018|632-555-0129|632-555-0129|       null|           26|          680.0|2009-06-18 00:00:...|        1|2009-07-10 00:00:...|2009-06-18 00:00:...|2009-07-10 00:00:...|2009-06-18 00:00:...|\n|      19|         812|          51|    Store|Contoso Cheney Store|Contoso Cheney Store|   Off|2004-08-28 00:00:...|2009-05-12 00:00:...|      653|  97001|           97019|328-555-0150|328-555-0150|      Store|           19|          455.0|2009-06-16 00:00:...|        1|2009-07-10 00:00:...|2009-06-16 00:00:...|2009-07-10 00:00:...|2009-06-16 00:00:...|\n|      20|         824|          52|    Store|Contoso Englewood...|Contoso Englewood...|    On|2004-09-29 00:00:...|                null|      654|  87001|           87001|435-555-0113|435-555-0113|       null|           33|          560.0|2009-06-17 00:00:...|        1|2009-07-10 00:00:...|2009-06-17 00:00:...|2009-07-10 00:00:...|2009-06-17 00:00:...|\n+--------+------------+------------+---------+--------------------+--------------------+------+--------------------+--------------------+---------+-------+----------------+------------+------------+-----------+-------------+---------------+--------------------+---------+--------------------+--------------------+--------------------+--------------------+\nonly showing top 20 rows\n\n"
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "title": "Cache Data in SparkSQL for Performance Boost",
+      "text": "hiveContext.cacheTable(\"factsales\")\nhiveContext.cacheTable(\"factonlinesales\")\nhiveContext.cacheTable(\"dimstoredf\")\nhiveContext.cacheTable(\"dimproductdf\")",
+      "dateUpdated": "Apr 27, 2016 1:32:29 PM",
+      "config": {
+        "enabled": true,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "colWidth": 12.0,
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696478_-253278242",
+      "id": "20160427-131136_1574906238",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": ""
+      },
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "dateUpdated": "Apr 27, 2016 1:11:36 PM",
+      "config": {},
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1461762696479_-253662991",
+      "id": "20160427-131136_1713192791",
+      "dateCreated": "Apr 27, 2016 1:11:36 PM",
+      "status": "READY",
+      "errorMessage": "",
+      "progressUpdateIntervalMs": 500
+    }
+  ],
+  "name": "SparkSQL Data Federation Demo",
+  "id": "2BJTESEVM",
+  "angularObjects": {
+    "2BGGP9NXC": [],
+    "2BK6JEPUH": [],
+    "2BK6XB7PY": [],
+    "2BK3PCA5R": [],
+    "2BKHHYJEU": [],
+    "2BHX12XKZ": [],
+    "2BH1RAB7W": [],
+    "2BGV5B525": [],
+    "2BJHDAN9A": [],
+    "2BKHZTPUH": [],
+    "2BJ2MJ2TS": [],
+    "2BH3VJ6CH": [],
+    "2BHSPB5KC": []
+  },
+  "config": {},
+  "info": {}
+}
