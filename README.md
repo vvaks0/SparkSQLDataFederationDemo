@@ -34,7 +34,19 @@ Run the following commands as root at the host console:
 `echo "zeppelin ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers `
 `echo "host all all 127.0.0.1/32 md5" >> /var/lib/pgsql/data/pg_hba.conf`
 
-Log into Amabri as admin and restart the Zeppelin service
+Log into Amabri as admin 
+
+Click on the Spark service in the left hand pane
+
+- Click on Configs
+
+- Click on the "Custom spark-defaults"
+
+- Add a custom property key=spark.sql.hive.thriftServer.singleSession value=true 
+
+Restart the Spark service
+
+Restart the Zeppelin service
 
 [http://sandbox.hortonworks.com:8080](http://sandbox.hortonworks.com:8080)
 
